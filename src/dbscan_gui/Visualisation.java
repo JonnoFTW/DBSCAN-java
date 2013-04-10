@@ -9,8 +9,12 @@ import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferStrategy;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.InputMismatchException;
@@ -168,6 +172,29 @@ public class Visualisation extends JPanel {
                 runClustering();
             }
         });
+        
+        JButton parameterButton = new JButton("Calculate Parameters");
+        parameterButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent arg0) {
+                BufferedWriter csv;
+                try {
+                    csv = new BufferedWriter(new FileWriter("test.csv"));
+                    csv.write("epsilon,minpts,clusters\n");
+                    for (epsilon = 0; epsilon < 5000; epsilon+=50) {
+                        runNeighbouring();
+                        for (minpts = 10; minpts < 200; minpts+=5) {
+                            runClustering();
+                            csv.write(epsilon+","+minpts+","+clusters.size()+"\n");
+                        }
+                    }
+                }
+                catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+        });
+        inputs.add(parameterButton, "cell 0 8 2 1,growx");
         inputs.add(btnRecalculateClusters, "cell 0 9 2 1,growx");
 
         tglbtnStart = new JToggleButton("Start");
@@ -281,7 +308,7 @@ public class Visualisation extends JPanel {
         protected void done() {
             if(!isCancelled()) {
                 for (Point p : points) {
-                    System.out.println(p+" ->"+p.neighbours);
+               //     System.out.println(p+" ->"+p.neighbours);
                 }
                 System.out.println("--------------------------------------------------------");
                 runClustering();
@@ -501,13 +528,13 @@ public class Visualisation extends JPanel {
             
             for (Point p : noise) {
                 g.setColor(Color.white);
-                drawCircle(g, p.points[0]*100, p.points[1]*100 , 2,false, Color.white);
+                drawCircle(g, p.points[0]/100, p.points[1]/100 , 2,false, Color.white);
             }
             for (HashSet<Point> cluster : clusters) {
                 Color c = generateRandomColor(null);
                 //g.setColor(c);
                 for (Point point : cluster) {
-                    drawCircle(g, point.points[0]*100 , point.points[1]*100 , 2,true,c);
+                    drawCircle(g, point.points[0]/100 , point.points[1]/100 , 2,true,c);
                 }
             }
         }
