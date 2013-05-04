@@ -4,10 +4,10 @@ package dbscan_gui;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedList;
+import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Random;
+import java.util.TreeSet;
 
 
 public class KDTree {
@@ -33,19 +33,26 @@ public class KDTree {
         }
         
     }
+
+
+    /**
+     * 
+     * @return an arraylist of all points in the tree
+     */
+    public ArrayList<Point> getNodes() {
+        return root.allNodes();
+    }
     /**
      * Adapted from https://code.google.com/p/python-kdtree/
      * Stores points in a tree, sorted by axis
      * @author Jonathan
      *
      */
-    public ArrayList<Point> getNodes() {
-        return root.allNodes();
-    }
     public class KDTreeNode {
         KDTreeNode leftChild = null;
         KDTreeNode rightChild = null;
         Point location;
+        boolean visited = false;
         
         /**
          * @param list the list to make the tree from
@@ -54,7 +61,6 @@ public class KDTree {
             if(list.isEmpty())
                 return;
             final int axis = depth % (list.get(0).points.length);
-            
             Collections.sort(list, comps[axis] );
             int median = list.size()/2;
             location = list.get(median);
@@ -66,10 +72,6 @@ public class KDTree {
                 rightChild = new KDTreeNode(new ArrayList<Point>(rightPoints),depth+1);
         }
 
-        /**
-         * 
-         * @param p
-         */
         public void add(Point p) {
             throw new UnsupportedOperationException();
         }
@@ -85,7 +87,7 @@ public class KDTree {
         public ArrayList<Point> allNodes() { 
             ArrayList<Point> points = new ArrayList<Point>();
             points.add(location);
-            if(leftChild != null)
+            if(leftChild != null)  
                 points.addAll(leftChild.allNodes());
             if (rightChild != null)
                 points.addAll(rightChild.allNodes());
@@ -123,29 +125,66 @@ public class KDTree {
      * @param depth
      * @param bestNeighbours
      */
-    private void nearestNeighbours_(KDTreeNode node, Point queryPoint, int depth,KDNeighbours bestNeighbours) {
+    private void nearestNeighbours_(KDTreeNode node, Point queryPoint, int depth, KDNeighbours bestNeighbours) {
         if(node == null)
             return;
-        if(node.isLeaf() && queryPoint != node.location) {
+        if(node.isLeaf()) {
             bestNeighbours.add(node.location);
             return;
         }
         int axis = depth % (queryPoint.points.length);
         KDTreeNode nearSubtree = node.rightChild;
         KDTreeNode farSubtree  = node.leftChild;
-        if(queryPoint.points[axis] < node.location.points[axis]) {
+        if(queryPoint.points[axis] <= node.location.points[axis]) {
             nearSubtree = node.leftChild;
             farSubtree = node.rightChild;
         }
         nearestNeighbours_(nearSubtree, queryPoint,  depth+1, bestNeighbours);
-        if(node.location != queryPoint)
+        if(node.location != queryPoint) 
             bestNeighbours.add(node.location);       
-        if(Math.pow(node.location.points[axis] - queryPoint.points[axis],2) <= bestNeighbours.largestDistance)
+     //   if(Math.pow(node.location.points[axis] - queryPoint.points[axis],2) <= bestNeighbours.largestDistance) 
             nearestNeighbours_(farSubtree, queryPoint, depth+1,bestNeighbours);
+        
         return;
     }
+    public ArrayList<Point> rangeSearch(Point queryPoint, int epsilon) {
+        ArrayList<Point> neighbours = new ArrayList<Point>();
+        rangeSearch(root, queryPoint, epsilon, neighbours, 0);
+        return neighbours;
+    }
+    private void rangeSearch(KDTreeNode node,Point queryPoint, int epsilon, ArrayList<Point> neighbours,int depth) {
+        if(queryPoint == null || node == null)
+            return;
+        node.visited = true;
+        if(node.location.distance(queryPoint) <= epsilon && queryPoint != node.location)  {
+            neighbours.add(node.location);
+        }
+        int axis =  depth % (queryPoint.points.length);
+        // check dim
+        KDTreeNode nearSubtree = node.rightChild;
+        KDTreeNode farSubtree  = node.leftChild;
+        if(queryPoint.points[axis] < node.location.points[axis]) {
+            nearSubtree = node.leftChild;
+            farSubtree = node.rightChild;
+        }
+        rangeSearch(nearSubtree, queryPoint,  epsilon, neighbours,depth+1);
+               
+        if(Math.pow(node.location.points[axis] - queryPoint.points[axis],2) <= Math.sqrt(epsilon)) 
+            rangeSearch(farSubtree, queryPoint, epsilon,neighbours,depth+1);
+        
+      
+    }
+    private int countVisited(KDTreeNode node) {
+        if(node == null)
+            return 0;
+        if(node.visited)
+            return countVisited(node.leftChild) + countVisited(node.rightChild) + 1;
+        else
+            return countVisited(node.leftChild) + countVisited(node.rightChild);
+    }
+
     /**
-     * Private datastructure for holding the neighbours of a point
+     * Private data structure for holding the neighbours of a point
      * @author Jonathan
      *
      */
@@ -153,7 +192,12 @@ public class KDTree {
         Point queryPoint;
         double largestDistance = 0;
         int t;
-        LinkedList<Tuple> currentBest = new LinkedList<Tuple>();
+        TreeSet<Tuple> currentBest = new TreeSet<Tuple>(new Comparator<Tuple>() {
+            @Override
+            public int compare(Tuple o1, Tuple o2) {
+                return (int) (o1.y-o2.y);
+            }
+        });
         /**
          * @param queryPoint
          * @param t
@@ -164,13 +208,18 @@ public class KDTree {
         }
         /**
          * @param t
-         * @return
+         * @return the t nearest neighbours to the query point
          */
         public ArrayList<Point> getNBest(int t) {
             //System.out.println(currentBest);
             ArrayList<Point> best = new ArrayList<Point>();
-            for (Tuple tp : currentBest.subList(0, t)) {
-                best.add(tp.x);
+            Iterator<Tuple> it = currentBest.iterator();
+            int count = 0;
+            while(it.hasNext()){
+                if(count==t)
+                    break;
+                best.add(it.next().x);
+                count++;
             }
             return best;
         }
@@ -182,48 +231,41 @@ public class KDTree {
         public ArrayList<Point> getBest(int epsilon) {
            // System.out.println(currentBest);
             ArrayList<Point> best = new ArrayList<Point>();
-            for (Tuple tu : currentBest) {
-               // System.out.println(tu.x+"->"+queryPoint+" "+tu.y);
-                if(tu.y <= epsilon && tu.x != queryPoint)
+            Iterator<Tuple> it = currentBest.iterator();
+            while(it.hasNext()) {
+                Tuple tu =it.next();
+                if(tu.y > epsilon)
+                    break;
+                else if(tu.x != queryPoint)
                     best.add(tu.x);
             }
             return best;
         }
-        /**
-         * 
-         */
-        public void calculateLargest() {
-            if(t >= currentBest.size())
-                largestDistance = currentBest.getLast().y; 
-            else
-                largestDistance = currentBest.get(t-1).y;
-        }
-        /**
-         * @param p
-         */
+        
         public void add(Point p) {
-            double sd = p.distance(queryPoint);
-            ListIterator<Tuple> it = currentBest.listIterator();
-            int i = 0;
-            while(it.hasNext()) {
-                
-                if(i == t)
-                    return;
-                if (it.next().y > sd) {
-                    currentBest.add(i, new Tuple(p, sd));
-                    calculateLargest();
-                    return;
-                }
-                i++;
-            }
-            currentBest.offerLast(new Tuple(p,sd));
+            double dist = p.distance(queryPoint);
+            currentBest.add(new Tuple(p, dist));
             calculateLargest();
         }
-        /**
-         * @author Jonathan
-         *
-         */
-        private class Tuple {
+        private void calculateLargest() {
+            largestDistance = currentBest.last().y;
+           // System.out.println("Largest candidate distance for"+queryPoint+" ->"+currentBest.last());
+            /*
+            if(t >= currentBest.size())
+                largestDistance = currentBest.last().y;
+            else {
+                Iterator<Tuple> it = currentBest.iterator();
+                int c = 0;
+                while(it.hasNext()) {
+                    Tuple tu = it.next();
+                    if(c==t){
+                        largestDistance = tu.y;
+                        break;
+                    }
+                }
+            }*/
+        }
+        private class Tuple  {
             Point x;
             double y;
             Tuple(Point x, double y) {
@@ -241,40 +283,40 @@ public class KDTree {
      */
     
     public static void main(String[] args) {
-        int minpts = 5,epsilon = 3;
+        int epsilon = 3;
         
         System.out.println("Epsilon: "+epsilon);
         ArrayList<Point> points = new ArrayList<Point>();
         Random r = new Random();
-        for (int i = 0; i < 10; i++) {
-            points.add(new Point(r.nextInt(10), r.nextInt(10)));
+        for (int i = 0; i < 21; i++) {
+            points.add(new Point(r.nextInt(10),r.nextInt(10)));
         }
+        
         System.out.println("Points "+points );
-        System.out.println("Neighbour Kd");
-        KDTree tree = new KDTree(points);
         System.out.println("----------------");
+        System.out.println("Neighbouring Kd");
+        KDTree tree = new KDTree(points);
         for (Point p : points) {
-            ArrayList<Point> neighbours = tree.nearestNeighbours(p, epsilon);
-            p.addNeighbours(neighbours);
             
-        }
-        for (Point point : points) {
-            System.out.println("Neighbours of "+point+" are: "+point.neighbours);
-            point.neighbours.clear();
+            ArrayList<Point> neighbours = tree.rangeSearch(p,epsilon);
+           // for (Point q : neighbours) { q.addNeighbour(p);}
+            p.addNeighbours(neighbours);
+            p.printNeighbours();
+            p.clearNeighbours();
         }
         System.out.println("------------------");
         System.out.println("Neighbouring O(n^2)");
-        for (int i = 0; i < points.size(); i++) {
-            for (int j = i + 1; j < points.size(); j++) {
-                Point p = points.get(i), q = points.get(j);
-                if (p.distance(q) <= epsilon) {
-                    p.addNeighbour(q);
-                    q.addNeighbour(p);
-                }
+    for (int i = 0; i < points.size(); i++) {
+        for (int j = i + 1; j < points.size(); j++) {
+            Point p = points.get(i), q = points.get(j);
+            if (p.distance(q) <= epsilon) {
+                p.addNeighbour(q);
+                q.addNeighbour(p);
             }
         }
+    }
         for (Point point : points) {
-            System.out.println("Neighbours of "+point+" are: "+point.neighbours);
+            point.printNeighbours();
         }
 
     }
