@@ -40,10 +40,10 @@ public class QuadTree implements Iterable<Point> {
 
             @Override
             public int compare(Point p, Point q) {
-                if(p.points[0] == q.points[0])
-                    return p.points[1] - q.points[1];
+                if(p.coordinates[0] == q.coordinates[0])
+                    return p.coordinates[1] - q.coordinates[1];
                 else
-                    return p.points[0] - q.points[0];
+                    return p.coordinates[0] - q.coordinates[0];
             }
         });   
         int median = points.size()/2 -1;
@@ -95,7 +95,7 @@ public class QuadTree implements Iterable<Point> {
      * @return
      */
     private boolean lessX(Point p, QuadTreeNode h) {
-        return p.points[0] < h.x;
+        return p.coordinates[0] < h.x;
     }
     /**
      * @param p
@@ -103,10 +103,10 @@ public class QuadTree implements Iterable<Point> {
      * @return
      */
     private boolean lessY(Point p, QuadTreeNode h) {
-        return p.points[1] < h.y;
+        return p.coordinates[1] < h.y;
     }
     private boolean eq(Point p, QuadTreeNode h) {
-        return p.points[0] == h.x && p.points[1] == h.y;
+        return p.coordinates[0] == h.x && p.coordinates[1] == h.y;
     }
     /**
      * 
@@ -144,16 +144,12 @@ public class QuadTree implements Iterable<Point> {
      */
     private void query2D(QuadTreeNode h, Point p, int r) {
         if(h==null) return;
-        int px = p.points[0];
-        int py = p.points[1];
+        int px = p.coordinates[0];
+        int py = p.coordinates[1];
         int xmin = px - r;
         int xmax = px + r;
         int ymin = py - r;
         int ymax = py + r;
-        /*
-         * We only need to check if the point is in the circle, not the square.
-         */
-     //   boolean squareContains = hx >= xmin && hx <= xmax && hy >= ymin && hy <= ymax;
         if(p.distance(h.value.get(0)) <= r) {
             p.addNeighbours(h.value);
         }
@@ -162,118 +158,7 @@ public class QuadTree implements Iterable<Point> {
         if (!(xmax < h.x) &&  (ymin < h.y)) query2D(h.SE, p, r);
         if (!(xmax < h.x) && !(ymax < h.y)) query2D(h.NE, p, r);
     }
-    /**
-     * Adds all neighours of p from the tree to the point
-     * @param epsilon
-     * @param p
-     */
-    public HashSet<Point> queryCircleThreaded(final int epsilon, final Point p) {
-        // Make 4 threads, 1 for each quadrant
-        HashSet<Point> neighbours = new HashSet<Point>();
-        final HashSet<Point> neighboursNE = new HashSet<Point>();
-        final HashSet<Point> neighboursNW = new HashSet<Point>();
-        final HashSet<Point> neighboursSE = new HashSet<Point>();
-        final HashSet<Point> neighboursSW = new HashSet<Point>();
-        
-        Thread ne= new Thread(new Runnable() {
-            
-            @Override
-            public void run() {
-                queryThreadedNE(root, p, epsilon,neighboursNE);
-            }
-        });
-        Thread nw= new Thread(new Runnable() {
-            
-            @Override
-            public void run() {
-                queryThreadedNW(root, p, epsilon,neighboursNW);
-            }
-        });
-        Thread se= new Thread(new Runnable() {
-            
-            @Override
-            public void run() {
-                queryThreadedSE(root, p, epsilon,neighboursSE);
-            }
-        });
-        Thread sw= new Thread(new Runnable() {
-            
-            @Override
-            public void run() {
-                queryThreadedSW(root, p, epsilon,neighboursSW);
-            }
-        });
-        ne.start();
-        nw.start();
-        se.start();
-        sw.start();
-        
-        try {
-            ne.join();     
-            nw.join();
-            se.join();
-            sw.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        
-        neighbours.addAll(neighboursSW);
-        neighbours.addAll(neighboursNW);
-        neighbours.addAll(neighboursNE);
-        neighbours.addAll(neighboursSE);
-        return neighbours;
-    }
-    
-    /**
-     * @param h
-     * @param p
-     * @param r
-     */
-    private void queryThreadedNE(QuadTreeNode h, Point p, int r, HashSet<Point> neighbours) {
-        if(h==null) return;
-        int px = p.points[0];
-        int py = p.points[1];
-        int xmax = px + r;
-        int ymax = py + r;
-        if(p.distance(h.value.get(0)) <= r) {
-            neighbours.addAll(h.value);
-        }
-        if (!(xmax < h.x) && !(ymax < h.y)) query2D(h.NE, p, r);
-    }
-    private void queryThreadedNW(QuadTreeNode h, Point p, int r, HashSet<Point> neighbours) {
-        if(h==null) return;
-        int px = p.points[0];
-        int py = p.points[1];
-        int xmin = px - r;
-        int ymax = py + r;
-        if(p.distance(h.value.get(0)) <= r) {
-            neighbours.addAll(h.value);
-        }
-        if ( (xmin < h.x) && !(ymax < h.y)) query2D(h.NW, p, r);
-    }
-    private void queryThreadedSE(QuadTreeNode h, Point p, int r, HashSet<Point> neighbours) {
-        if(h==null) return;
-        int px = p.points[0];
-        int py = p.points[1];
-        int xmax = px + r;
-        int ymin = py - r;
-        if(p.distance(h.value.get(0)) <= r) {
-            neighbours.addAll(h.value);
-        }
-        if (!(xmax < h.x) &&  (ymin < h.y)) query2D(h.SE, p, r);
-    }
-    private void queryThreadedSW(QuadTreeNode h, Point p, int r, HashSet<Point> neighbours) {
-        if(h==null) return;
-        int px = p.points[0];
-        int py = p.points[1];
-        int xmin = px - r;
-        int ymin = py - r;
-        if(p.distance(h.value.get(0)) <= r) {
-            neighbours.addAll(h.value);
-        }
-        if ( (xmin < h.x) &&  (ymin < h.y)) query2D(h.SW, p, r);
-      
-    }
+  
     /**
      * A node in the QuadTree, has 4 subregions that are axis aligned.
      * 
@@ -286,8 +171,8 @@ public class QuadTree implements Iterable<Point> {
         int x,y;
         public QuadTreeNode(Point p) {
             value.add(p);
-            x = p.points[0];
-            y = p.points[1];
+            x = p.coordinates[0];
+            y = p.coordinates[1];
         }
     }
     /**
@@ -297,13 +182,12 @@ public class QuadTree implements Iterable<Point> {
         int epsilon = 2000;
         int runs = 10;
         System.out.println("Epsilon: "+epsilon);
-        for (String string : new String[]{"a1.txt","a2.txt","a3.txt"}) {
+        for (String string : new String[]{"a1.txt","a2.txt","a3.txt","pathological"}) {
             System.out.println(string+"------------------");
             HashMap<String, Double> stats = new HashMap<String, Double>();
             stats.put("arbitrary", 0.0);
             stats.put("sorted", 0.0);
             stats.put("zorder", 0.0);
-            stats.put("threaded", 0.0);
             
             for (int i = 0; i < runs; i++) {
                     ArrayList<Point> points = new ArrayList<Point>();
@@ -314,14 +198,17 @@ public class QuadTree implements Iterable<Point> {
                             points.add(new Point(in.nextInt(),in.nextInt()));
                         }
                     } catch (FileNotFoundException e) {
-                        e.printStackTrace();
+                     // Generate a pathological dataset (1,1),(2,2),(3,3)
+                        for(int j=0;j<3000;j++) {
+                            points.add(new Point(j,j));
+                            
+                        }
                     }
                     QuadTree tree = new QuadTree();
                     for (Point point : points) {
                         tree.add(point);
                     }
                     stats.put("arbitrary",new Double(stats.get("arbitrary")+(timeNeighbouring(tree, epsilon))));
-                    stats.put("threaded", new Double(stats.get("threaded")+(timeThreadedNeighbouring(tree, epsilon))));
                     tree = new QuadTree(points);
                     stats.put("sorted",new Double(stats.get("sorted")+(timeNeighbouring(tree, epsilon))));
                     
@@ -330,33 +217,26 @@ public class QuadTree implements Iterable<Point> {
                         @Override
                         public int compare(Point p, Point q) {
                             int j = 0, k = 0, x =0;
-                            for (int i = 0; i < p.points.length; i++) {
-                                int y = p.points[k] ^ q.points[k];
+                            for (int i = 0; i < p.coordinates.length; i++) {
+                                int y = p.coordinates[k] ^ q.coordinates[k];
                                 if(x < y && x <(x^y)) {
                                     j = k;
                                     x = y;
                                 }
                             }
-                            return p.points[j] - q.points[j];
+                            return p.coordinates[j] - q.coordinates[j];
                         }
                     });
                     stats.put("zorder",new Double(stats.get("zorder")+(timeNeighbouring(tree, epsilon))));
+                    
             }
+            
             
             for (Entry<String, Double> entry : stats.entrySet()) {
                 System.out.println(entry.getKey()+": "+ (entry.getValue()/runs));
             }
         }
             
-    }
-    public static double timeThreadedNeighbouring(QuadTree tree, int epsilon) {
-        double start = System.nanoTime();
-        for (Point p : tree) {
-            HashSet<Point> n = tree.queryCircleThreaded(epsilon,p);
-            p.addNeighbours(n);
-            p.clearNeighbours();
-        }
-        return (System.nanoTime()-start) /1000000000.0;
     }
     public static double timeNeighbouring(QuadTree tree,int epsilon) {
         double start = System.nanoTime();

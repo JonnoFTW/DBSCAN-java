@@ -12,28 +12,28 @@ import java.util.HashSet;
 public class Point {
     
     private final HashSet<Point> neighbours = new HashSet<Point>();
-    int[] points;
+    int[] coordinates;
     boolean visited = false;
     /**
      * @param ps
      */
     public Point(ArrayList<Integer> ps) {
-        points = new int[ps.size()];
-        for (int i = 0; i < points.length; i++) {
-            points[i] = ps.get(i);
+        coordinates = new int[ps.size()];
+        for (int i = 0; i < coordinates.length; i++) {
+            coordinates[i] = ps.get(i);
         }
     }
     /**
      * @param is
      */
     public Point(int... is) {
-        this.points = is;
+        this.coordinates = is;
     }
     /* (non-Javadoc)
      * @see java.lang.Object#toString()
      */
     public String toString() {
-        return Arrays.toString(points);
+        return Arrays.toString(coordinates);
     }
 
     /**
@@ -42,8 +42,8 @@ public class Point {
      */
     public double squareDistance(Point p) {
         double sum = 0;
-        for (int i = 0;i < points.length;i++) {
-            sum += Math.pow(points[i] - p.points[i],2);
+        for (int i = 0;i < coordinates.length;i++) {
+            sum += Math.pow(coordinates[i] - p.coordinates[i],2);
         }
         return sum;
     }

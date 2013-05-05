@@ -14,7 +14,7 @@ public class KDTree {
     KDTreeNode root;
     PointComparator[] comps;
     public KDTree(ArrayList<Point> list) {
-        int axes = list.get(0).points.length;
+        int axes = list.get(0).coordinates.length;
         
         comps = new PointComparator[axes];
         for (int i = 0; i < axes; i++) {
@@ -29,7 +29,7 @@ public class KDTree {
         }
         @Override
         public int compare(Point p1, Point p2) {
-            return p1.points[axis] - p2.points[axis];
+            return p1.coordinates[axis] - p2.coordinates[axis];
         }
         
     }
@@ -60,7 +60,7 @@ public class KDTree {
         public KDTreeNode(ArrayList<Point> list, int depth) {
             if(list.isEmpty())
                 return;
-            final int axis = depth % (list.get(0).points.length);
+            final int axis = depth % (list.get(0).coordinates.length);
             Collections.sort(list, comps[axis] );
             int median = list.size()/2;
             location = list.get(median);
@@ -132,10 +132,10 @@ public class KDTree {
             bestNeighbours.add(node.location);
             return;
         }
-        int axis = depth % (queryPoint.points.length);
+        int axis = depth % (queryPoint.coordinates.length);
         KDTreeNode nearSubtree = node.rightChild;
         KDTreeNode farSubtree  = node.leftChild;
-        if(queryPoint.points[axis] <= node.location.points[axis]) {
+        if(queryPoint.coordinates[axis] <= node.location.coordinates[axis]) {
             nearSubtree = node.leftChild;
             farSubtree = node.rightChild;
         }
@@ -159,17 +159,17 @@ public class KDTree {
         if(node.location.distance(queryPoint) <= epsilon && queryPoint != node.location)  {
             neighbours.add(node.location);
         }
-        int axis =  depth % (queryPoint.points.length);
+        int axis =  depth % (queryPoint.coordinates.length);
         // check dim
         KDTreeNode nearSubtree = node.rightChild;
         KDTreeNode farSubtree  = node.leftChild;
-        if(queryPoint.points[axis] < node.location.points[axis]) {
+        if(queryPoint.coordinates[axis] < node.location.coordinates[axis]) {
             nearSubtree = node.leftChild;
             farSubtree = node.rightChild;
         }
         rangeSearch(nearSubtree, queryPoint,  epsilon, neighbours,depth+1);
                
-        if(Math.pow(node.location.points[axis] - queryPoint.points[axis],2) <= Math.sqrt(epsilon)) 
+        if(Math.pow(node.location.coordinates[axis] - queryPoint.coordinates[axis],2) <= Math.sqrt(epsilon)) 
             rangeSearch(farSubtree, queryPoint, epsilon,neighbours,depth+1);
         
       

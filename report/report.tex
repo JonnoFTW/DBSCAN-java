@@ -1,6 +1,7 @@
  \documentclass{CRPITStyle} 
 %\usepackage{epsfig}   % Packages to use if you wish
 %\usepackage{lscape}   %
+\usepackage{hyperref}
 \usepackage{listings}
 \lstset{language=Java,
  captionpos=b,
@@ -35,12 +36,12 @@ Email:~{\tt jonathan.mackenzie@flinders.edu.au}\\[.1in]}
 \maketitle
 
 \begin{abstract}
-This report describes my Java implementation of the DBSCAN algorithm and associated visualisation. It describes the development process, the justification of data-structures used and explanation of features.
+This report describes my Java implementation of the DBSCAN algorithm and associated visualisation. It describes the development process, the justification of data-structures used and explanation of features. All sources and data used for this project can be found here \url{https://github.com/JonnoFTW/DBSCAN-java}
 \end{abstract}
 \vspace{.1in}
 
 \section{Introduction}
-The Density-Based Spatial Clustering of Applications with Noise (DBSCAN) algorithm was originally proposed by \cite{Ester96adensity-based} and has applications where neighbours of a spatial object need to be found quickly such as graphical information systems (GIS) and collision detection in games and physics simulations. In this project, I use quadtrees as a backing data structure for calculating clusters using the DBSCAN algorithm. Other data structures such as KD-tree were considered but Quadtree was chosen because of it's simplicity.
+The Density-Based Spatial Clustering of Applications with Noise (DBSCAN) algorithm was originally proposed by \cite{Ester96adensity-based} and has applications where neighbours of a spatial object need to be found quickly such as graphical information systems (GIS) and collision detection in games and physics simulations. In this project, I use quadtrees as an indexing data structure for calculating clusters using the DBSCAN algorithm. Other data structures such as KD-tree were considered but Quadtree was chosen because of it's simplicity.
 
 \section{Usage}
 To run the program, simply run the executable jar attached. The application has 2 main areas in the GUI: the visualisation and the configuration. The visualisation displays the results. To configure the run of the algorithm, set minpts and epsilon or push the "calculate parameters" button to have them calculated for you. The load file button will prompt the user to select a file of whitespace separated integers, with 2 integers per line to indicate a point in space. The export clusters button will prompt the user to select an output location for clustering results. The recalculate clusters button can be used to recalculate the clustering after changing minpts (but not epsilon). This does not require recalculation of neighbours. Start will run the neighbouring and then clustering algorithms. The progress bar displays the progress. The text area displays a log of the applications workings.
@@ -51,16 +52,22 @@ The features of the application are:
 \begin{enumerate}
 \item Visualisation of clusters and noise
 \item Exporting of clustering results
-\item Visualisation of algorithm progress results
+\item Progress bar of algorithm completion
 \item User specified parameters for minpts and epsilon
 \item Optional automatic calculation of minpts and epsilon parameters 
-\item Iterative cluster calculation (useful when making small tweaks to minpts, avoiding multiple neighbouring calculations). Made possible by storing the neighbours of each point as a member of that point. This requires $O(n^2)$ memory. Note do a benchmark for retrieving neighbours at each run.
+\item Iterative cluster calculation (useful when making small tweaks to minpts, avoiding multiple neighbouring calculations). Made possible by storing the neighbours of each point as a member of that point.
 \end{enumerate}
 
 \subsection{Internals}
 Originally, the application was written in Python (with limited features compared to the Java implementation), but this proved too slow when calculating the neighbours of points using the method described . When developing the DBSCAN algorithm, 
 
 Java was chosen as the development language because it allowedd the rapid development of the GUI using a GUI builder and has sufficient runtime performace compared to python. Interally, the data-points are stored in a QuadTree; a data-structure that provides $O(\log n)$ neighbour searching, $O(n)$ memory and $O(n)$ generation. The na\"{\i}ve method of calculating the distance between all points, as described below requires $O(n^2)$ time, but with a simple optimisation we can achieve $O(\frac{n^2 -n}{2})$
+
+\subsection{Quadtree}
+The quadtree \citet{Samet:1984:QRH:356924.356930} is a hierarchical data structure that stores data by partitioning each level into four quadrants. Each node in the tree has four subregions, similar to the quadrants of a compass, where points are stored in relation to the parent node. This makes searching and  It can be thought of as a 2-dimensional binary tree, where insertion/searching compares on the x and y axes on each point. We refer to
+
+To make DBSCAN iterative, we store each point's neighbours in a HashSet on that point, for a QuadTree $D$ of $n$ points, this requires $O(n^2)$ memory in the worst case (when all points are neighbours of each other, in reality the points are spread out and each point must store a small subset of $D$). Since a single range query has $O(log n + k)$ complexity, the complexity for finding all neighbourings is $O(n \log n + k)$ where $k$ is the number of neighbours of each point. The time is also increased when epsilon is increased so the complexity approaches $O(n^2)$ so care must be taken to balance the tree (ie. minimise its maximum depth) and keep epsilon at a reasonable value. Note do a benchmark for retrieving neighbours at each run.
+
 
 \begin{lstlisting}[caption=A na\"{\i}ve implementation for calculating which points are neighbours]
 public void findNeighbours(ArrayList<Point> points, int epsilon) {
@@ -76,8 +83,6 @@ public void findNeighbours(ArrayList<Point> points, int epsilon) {
 }
 
 \end{lstlisting}
-\subsection{Quadtree}
-The quadtree \citet{Samet:1984:QRH:356924.356930} is a hierarchical data structure that stores data by partitioning each level into four quadrants. Each node in the tree has four subregions, similar to the quadrants of a compass, where points are stored in relation to the parent node. This makes searching and 
 
 \bibliographystyle{agsm}  
 \bibliography{references}
