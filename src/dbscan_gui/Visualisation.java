@@ -454,7 +454,7 @@ public class Visualisation extends JPanel {
             log.append("Clustering\n");
             double start = System.nanoTime();
             dbscan();
-            log.append(String.format("Found %d clusters from %d points in %fs. %d noise%n",
+            log.append(String.format("Found %d clusters from %d points in %fs.%n%d noise%n",
                     clusters.size(), points.size(),
                     (System.nanoTime() - start) / 1000000000.0,
                     noise.size()));
@@ -562,7 +562,8 @@ public class Visualisation extends JPanel {
             
             log.append("Loading points from " + filename + "\n");
             try {
-                Scanner in = new Scanner(new File(filename));                    
+                Scanner in = new Scanner(new File(filename));  
+                ArrayList<Point> pointList = new ArrayList<Point>(3000);
                 while (in.hasNext()) {
                     int x = in.nextInt();
                     int y = in.nextInt();
@@ -570,7 +571,7 @@ public class Visualisation extends JPanel {
                         maxX = x;
                     if(y > maxY)
                         maxY = y;
-                    points.add(new Point(x,y));
+                    pointList.add(new Point(x,y));
                     /*
                     Scanner scan = new Scanner(in.nextLine()); 
                     ArrayList<Integer> ps = new ArrayList<Integer>(3);
@@ -578,8 +579,8 @@ public class Visualisation extends JPanel {
                         ps.add(scan.nextInt());
                     points.add(new Point(ps));
                     */
-                    
                 }
+                points = new QuadTree(pointList);
                 points_loaded = true;
             } catch (FileNotFoundException e) {
                 JOptionPane.showMessageDialog(null, "Could not load file "

@@ -18,7 +18,14 @@
  basicstyle=\footnotesize,
  emph={label}
 }
-
+\usepackage{xcolor}
+\definecolor{dark-red}{rgb}{0.4,0.15,0.15}
+\definecolor{dark-blue}{rgb}{0.15,0.15,0.4}
+\definecolor{medium-blue}{rgb}{0,0,0.5}
+\hypersetup{
+    colorlinks, linkcolor={black},
+    citecolor={dark-blue}, urlcolor={medium-blue}
+}
 \usepackage[authoryear]{natbib}
 \renewcommand{\cite}{\citep}
 \pagestyle{empty}
@@ -61,28 +68,63 @@ The features of the application are:
 \subsection{Internals}
 Originally, the application was written in Python (with limited features compared to the Java implementation), but this proved too slow when calculating the neighbours of points using the method described . When developing the DBSCAN algorithm, 
 
-Java was chosen as the development language because it allowedd the rapid development of the GUI using a GUI builder and has sufficient runtime performace compared to python. Interally, the data-points are stored in a QuadTree; a data-structure that provides $O(\log n)$ neighbour searching, $O(n)$ memory and $O(n)$ generation. The na\"{\i}ve method of calculating the distance between all points, as described below requires $O(n^2)$ time, but with a simple optimisation we can achieve $O(\frac{n^2 -n}{2})$
+Java was chosen as the development language because it allowed the rapid development of the GUI using a GUI builder and has sufficient runtime performace compared to python. Interally, the data-points are stored in a QuadTree; a data-structure that provides $O(\log n)$ neighbour searching, $O(n)$ memory and $O(n)$ generation. The na\"{\i}ve method of calculating the distance between all points, as described below requires $O(n^2)$ time, but with a simple optimisation we can achieve $O(\frac{n^2 -n}{2})$
 
 \subsection{Quadtree}
 The quadtree \citet{Samet:1984:QRH:356924.356930} is a hierarchical data structure that stores data by partitioning each level into four quadrants. Each node in the tree has four subregions, similar to the quadrants of a compass, where points are stored in relation to the parent node. This makes searching and  It can be thought of as a 2-dimensional binary tree, where insertion/searching compares on the x and y axes on each point. We refer to
 
-To make DBSCAN iterative, we store each point's neighbours in a HashSet on that point, for a QuadTree $D$ of $n$ points, this requires $O(n^2)$ memory in the worst case (when all points are neighbours of each other, in reality the points are spread out and each point must store a small subset of $D$). Since a single range query has $O(log n + k)$ complexity, the complexity for finding all neighbourings is $O(n \log n + k)$ where $k$ is the number of neighbours of each point. The time is also increased when epsilon is increased so the complexity approaches $O(n^2)$ so care must be taken to balance the tree (ie. minimise its maximum depth) and keep epsilon at a reasonable value. Note do a benchmark for retrieving neighbours at each run.
+To make DBSCAN iterative, we store each point's neighbours in a HashSet on that point, for a quadtree $D$ of $n$ points, this requires $O(k)$ where $k$ is the number of neighbours of each point and $O(n^2)$ memory in the worst case (when all points are neighbours of each other). Since a single range query has $O(\log n + k)$ complexity, the complexity for finding all neighbourings is $O(n \log n + k)$. The time is also increased when epsilon is increased (since you end up searching the entire tree in the worst case) so the complexity approaches $O(n^2)$ so care must be taken to balance the tree (ie. minimise its maximum depth) and keep epsilon at a reasonable value. 
 
+I have achieved a balanced quadtree tree by sorting the array of elements by their $x,y$ coordinates ($O(n \log n)$ in Java), placing all points in a balanced binary tree which requires $O(n)$ time and performing a breadth first traversal over the binary tree and inserting in that order (there is probably a way to iterate over the array of points and get the same ordering and reducing the memory overhead, but I couldn't figure it out). This ensures that the maximum depth of the quadtree is minimised and the number of subdivisions at each level is maximised. To test this, read the main function in \verb+QuadTree.java+. The results of this test are listed below:
 
-\begin{lstlisting}[caption=A na\"{\i}ve implementation for calculating which points are neighbours]
-public void findNeighbours(ArrayList<Point> points, int epsilon) {
-    for (int i = 0; i < points.size(); i++) {
-        for (int j = i + 1; j < points.size(); j++) {
-            Point p = points.get(i), q = points.get(j);
-            if (p.distance(q) <= epsilon) {
-                p.addNeighbour(q);
-                q.addNeighbour(p);
-            }
-        }
-    }
-}
+\begin{verbatim}
+Epsilon: 2000
+Runs: 10
+a1.txt------------------
+arbitrary Maxdepth :21
+arbitrary avgdepth :12.684
+sorted Maxdepth :16
+sorted avgdepth :8.663
+zorder Maxdepth :45
+zorder avgdepth :23.533
+arbitrary: 0.0901s 
+sorted: 0.0493s 
+zorder: 0.1091s 
+a2.txt------------------
+arbitrary Maxdepth :22
+arbitrary avgdepth :13.277
+sorted Maxdepth :16
+sorted avgdepth :8.879
+zorder Maxdepth :40
+zorder avgdepth :21.285
+arbitrary: 0.0816s 
+sorted: 0.0530s 
+zorder: 0.1558s 
+a3.txt------------------
+arbitrary Maxdepth :29
+arbitrary avgdepth :14.420
+sorted Maxdepth :17
+sorted avgdepth :9.586
+zorder Maxdepth :40
+zorder avgdepth :20.490
+arbitrary: 0.1114s 
+sorted: 0.0801s 
+zorder: 0.2213s 
+pathological------------------
+arbitrary Maxdepth :3000
+arbitrary avgdepth :3000.000
+sorted Maxdepth :12
+sorted avgdepth :11.931
+zorder Maxdepth :3000
+zorder avgdepth :3000.000
+arbitrary: 0.8146s 
+sorted: 0.7591s 
+zorder: 0.7713s 
+\end{verbatim}
 
-\end{lstlisting}
+\section{Future}
+I believe that the quadtree could be useful in creating another density based clustering algorithm because of its natural tendency to store data in clusters, assuming that the quadtree itself is balanced.
+
 
 \bibliographystyle{agsm}  
 \bibliography{references}

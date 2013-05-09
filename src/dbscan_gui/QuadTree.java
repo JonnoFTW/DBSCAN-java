@@ -8,7 +8,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Map.Entry;
+import java.util.Queue;
 import java.util.Scanner;
 
 /**
@@ -24,13 +26,17 @@ public class QuadTree implements Iterable<Point> {
     QuadTreeNode root;
     private int size = 0;
     /**
-     * Constructs an empty QuadTree
+     * Creates an empty QuadTree. Inserting elements is not guaranteed to result in a balanced
+     * tree. Use the other constructor.
      */
-    public QuadTree() {
+    public QuadTree(){
+        
     }
     /**
-     * Constructs a Quadtree from the points in the collection
-     * Should construct the tree in a balanced fashion
+     * Constructs a Quadtree from the points in the arraylist
+     * Should construct the tree in a balanced fashion. ie,
+     * its maximum depth is minimised and the number of subdivisions 
+     * at each level is maximised.
      * @param points the collection of points to add
      */
     public QuadTree(ArrayList<Point> points) {
@@ -45,14 +51,22 @@ public class QuadTree implements Iterable<Point> {
                 else
                     return p.coordinates[0] - q.coordinates[0];
             }
-        });   
-        int median = points.size()/2 -1;
-        add(points.get(median));
-        for (int i = 1; i <= median ; i++) {
-            add(points.get(median+i));
-            add(points.get(median-i));
+        }); 
+        // Create a balanced binary search tree
+        // and perform a breadth first traversal.
+        // This should balance the tree
+        // There's probably a way to iterate through the arraylist
+        // and get the same ordering but I don't know how
+        BTree bst = sortedArrayToBST(points);
+        Queue<BTree> queue = new LinkedList<BTree>();
+        queue.add(bst);
+        while(!queue.isEmpty()) {
+            BTree node = queue.remove();
+            add(node.data);
+            if(node.left != null) queue.add(node.left);
+            if(node.right != null) queue.add(node.right);
         }
-        add(points.get(points.size()-1));
+        
     }
     public QuadTree(ArrayList<Point> points, Comparator<Point> cmp) {
         if(points == null || points.isEmpty())
@@ -62,6 +76,38 @@ public class QuadTree implements Iterable<Point> {
         for (Point point : points) {
             add(point);
         }
+    }
+    /**
+     * Constructs the BTree recursively 
+     * @param list
+     * @param start
+     * @param end
+     * @return
+     */
+    private BTree arrayToBST(ArrayList<Point> points, int start, int end) {
+        if(start > end) return null;
+        int mid = start + (end - start) / 2;
+        BTree node = new BTree(points.get(mid));
+        node.left = arrayToBST(points, start, mid-1);
+        node.right = arrayToBST(points, mid+1, end);
+        return node;
+    }
+
+    /**
+     * Recursively create a height balanced binary tree
+     * from the list of points. Adapted from 
+     * http://leetcode.com/2010/11/convert-sorted-array-into-balanced.html
+     * @param head the sorted list to create the tree from
+     * @return a height balanced Binary tree
+     */
+    private BTree sortedArrayToBST(ArrayList<Point> points) {
+      return arrayToBST(points, 0, points.size()-1);
+    }
+    private class BTree {
+        BTree left;
+        BTree right;
+        Point data;
+        BTree(Point data){this.data = data;};
     }
     /**
      * Inserts the point p into the Quadtree.
@@ -174,6 +220,9 @@ public class QuadTree implements Iterable<Point> {
             x = p.coordinates[0];
             y = p.coordinates[1];
         }
+        public boolean isLeaf() {
+            return NW == null && NE == null && SW == null && SE == null;
+        }
     }
     /**
      * @param args
@@ -182,8 +231,11 @@ public class QuadTree implements Iterable<Point> {
         int epsilon = 2000;
         int runs = 10;
         System.out.println("Epsilon: "+epsilon);
+        System.out.println("Runs: "+runs);
+        
         for (String string : new String[]{"a1.txt","a2.txt","a3.txt","pathological"}) {
             System.out.println(string+"------------------");
+            boolean first = true;
             HashMap<String, Double> stats = new HashMap<String, Double>();
             stats.put("arbitrary", 0.0);
             stats.put("sorted", 0.0);
@@ -204,14 +256,25 @@ public class QuadTree implements Iterable<Point> {
                             
                         }
                     }
+                    // Make a tree using the order that the points appear in the file
                     QuadTree tree = new QuadTree();
                     for (Point point : points) {
                         tree.add(point);
                     }
+                    if(first) {
+                        System.out.format("arbitrary Maxdepth :%d%n", tree.maxDepth());
+                        System.out.format("arbitrary avgdepth :%.3f%n", tree.avgDepth());
+                    }
                     stats.put("arbitrary",new Double(stats.get("arbitrary")+(timeNeighbouring(tree, epsilon))));
+                    // Make a balanced quadtree  
                     tree = new QuadTree(points);
+                    if(first) {
+                        System.out.format("sorted Maxdepth :%d%n", tree.maxDepth());
+                        System.out.format("sorted avgdepth :%.3f%n", tree.avgDepth());
+                    }
                     stats.put("sorted",new Double(stats.get("sorted")+(timeNeighbouring(tree, epsilon))));
-                    
+                    // Should produce a pathological insertion order where 
+                    // nodes that are close to each other are inserted in order.
                     tree = new QuadTree(points,new Comparator<Point>() {
         
                         @Override
@@ -227,13 +290,17 @@ public class QuadTree implements Iterable<Point> {
                             return p.coordinates[j] - q.coordinates[j];
                         }
                     });
+                    if(first) {
+                        System.out.format("zorder Maxdepth :%d%n", tree.maxDepth());
+                        System.out.format("zorder avgdepth :%.3f%n", tree.avgDepth());
+                    }
                     stats.put("zorder",new Double(stats.get("zorder")+(timeNeighbouring(tree, epsilon))));
-                    
+                    first = false;
             }
             
             
             for (Entry<String, Double> entry : stats.entrySet()) {
-                System.out.println(entry.getKey()+": "+ (entry.getValue()/runs));
+                System.out.format("%s: %.4fs %n",entry.getKey(), (entry.getValue()/runs));
             }
         }
             
@@ -251,6 +318,28 @@ public class QuadTree implements Iterable<Point> {
      */
     public int size() {
         return size;
+    }
+    public double avgDepth() {
+        ArrayList<Integer> depths = new ArrayList<Integer>();
+        avgDepth(root,depths, 0);
+        double sum = 0.0;
+        for (Integer i : depths) {
+            sum += i;
+        }
+        return sum/depths.size();
+    }
+    private void avgDepth(QuadTreeNode h, ArrayList<Integer> depths, int depth) {
+        if(h != null) {
+            
+            if(h.isLeaf()) {
+                depths.add(depth+1);
+            } else {
+                avgDepth(h.NE, depths, depth+1);
+                avgDepth(h.NW, depths, depth+1);
+                avgDepth(h.SE, depths, depth+1);
+                avgDepth(h.SW, depths, depth+1);
+            }
+        }
     }
     public int maxDepth()  {
         return maxDepth(root,0);
