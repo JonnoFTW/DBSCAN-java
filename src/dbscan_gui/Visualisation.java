@@ -19,8 +19,10 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.HashSet;
 import java.util.InputMismatchException;
+import java.util.LinkedList;
 import java.util.Random;
 import java.util.Scanner;
 import javax.swing.JFrame;
@@ -34,7 +36,6 @@ import javax.swing.JSpinner;
 import javax.swing.JProgressBar;
 import javax.swing.JTextArea;
 import javax.swing.JToggleButton;
-import javax.swing.JCheckBox;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingWorker;
@@ -58,7 +59,7 @@ public class Visualisation extends JPanel {
     private QuadTree points = new QuadTree();
     private ArrayList<HashSet<Point>> clusters = new ArrayList<HashSet<Point>>();
     private HashSet<Point> noise = new HashSet<Point>();
-    private int epsilon = 5000;
+    private int epsilon = 2600;
     private int minpts = 100;
     private JTextArea log;
     private boolean points_loaded = false;
@@ -131,10 +132,6 @@ public class Visualisation extends JPanel {
                 }
             }
         });
-        
-        JCheckBox chckbxDisplayNeighbourhood = new JCheckBox(
-                "Display Neighbourhood");
-        inputs.add(chckbxDisplayNeighbourhood, "cell 0 3 2 1");
 
         JButton btnReloadFile = new JButton("Load File");
         inputs.add(btnReloadFile, "cell 0 4 2 1,growx");
@@ -175,30 +172,6 @@ public class Visualisation extends JPanel {
                 runClustering();
             }
         });
-        
-        JButton parameterButton = new JButton("Calculate Parameters");
-        parameterButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent arg0) {
-                BufferedWriter csv;
-                try {
-                    csv = new BufferedWriter(new FileWriter("test.csv"));
-                    csv.write("epsilon,minpts,clusters\n");
-                    for (epsilon = 0; epsilon < 5000; epsilon+=50) {
-                        runNeighbouring();
-                        for (minpts = 10; minpts < 200; minpts+=5) {
-                            runClustering();
-                            csv.write(epsilon+","+minpts+","+clusters.size()+"\n");
-                        }
-                    }
-                    csv.close();
-                }
-                catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            }
-        });
-        inputs.add(parameterButton, "cell 0 7 2 1,growx");
         inputs.add(btnRecalculateClusters, "cell 0 8 2 1,growx");
 
         tglbtnStart = new JToggleButton("Start");
@@ -224,7 +197,6 @@ public class Visualisation extends JPanel {
                     // Start the timer
                     stopNeighbouring();
                 }
-                
             }
         });
 
@@ -284,7 +256,7 @@ public class Visualisation extends JPanel {
     }
 
     /**
-     * 
+     * Clears all the neighbours of all points
      */
     protected void resetNeighbours() {
         resetClusters();
@@ -294,7 +266,7 @@ public class Visualisation extends JPanel {
     }
 
     /**
-     * 
+     * Clears all clusters
      */
     private void resetClusters() {
         for (Point p : points) {
@@ -312,7 +284,7 @@ public class Visualisation extends JPanel {
     }
 
     /**
-     * 
+     * Run the neighbour runner thread
      */
     private void runNeighbouring() {
         disableInputs();
@@ -371,7 +343,7 @@ public class Visualisation extends JPanel {
                 i++;
                 if(isCancelled())
                     return;
-                points.queryCircle(epsilon, p);
+                p.addNeighbours(points.queryCircle(epsilon, p));
                 setProgress(100*i/points.size());
             }
         }
@@ -475,26 +447,27 @@ public class Visualisation extends JPanel {
          * @param p
          * @param cluster
          */
-        private void expandCluster(Point p, HashSet<Point> cluster) {
-            cluster.add(p);
-            for (Point i : p.getNeighbours()) {
-                if (!i.visited) {
-                    i.visited = true;
+        private void expandCluster(HashSet<Point> cluster, HashSet<Point> neighbourPts) {
+            ArrayList<Point> neighbourList = new ArrayList<Point>(neighbourPts);
+            for (int j = 0; j < neighbourList.size();j++) {
+                Point p = neighbourList.get(j);
+                if(!p.visited) {
+                    p.visited = true;
                     pointsClustered++;
-                    setProgress(100*pointsClustered/points.size());
-                    if (i.neighbourCount() >= minpts) {
-                        i.addNeighbours(p.getNeighbours());
+                    HashSet<Point> neighbourPts_ = p.getNeighbours();
+                    if(neighbourPts_.size()+1 >= minpts) { // Add 1 because p is also a part of the cluster
+                        neighbourList.addAll(neighbourPts_);
                     }
                 }
                 boolean iInCluster = false;
                 for (HashSet<Point> x : clusters) {
-                    if(x.contains(i)) {
+                    if(x.contains(p)) {
                         iInCluster = true;
                         break;
                     }
                 }
                 if(!iInCluster)
-                    cluster.add(i);
+                    cluster.add(p);
             }
         }
         /**
@@ -515,14 +488,15 @@ public class Visualisation extends JPanel {
                 if (i.neighbourCount() < minpts) {
                     noise.add(i);
                 } else {
-                    HashSet<Point> c = new HashSet<Point>();
+                    HashSet<Point> c = new HashSet<Point>(minpts);
                     clusters.add(c);
-                    expandCluster(i, c);
+                    expandCluster(c, i.getNeighbours());
                 }
             }
             
         }
-    }
+  }
+      
     /**
      * Clears the collections containing points and clusters
      */

@@ -18,7 +18,7 @@ import java.util.Scanner;
  * Please ignore the high degree of coupling with the Point class.
  * Points with the same x,y location are stored in the same QuadTreeNode.
  * Could be extended to map points to objects.
- * @author Jonathan
+ * @author Jonathan Mackenzie
  *
  */
 public class QuadTree implements Iterable<Point> {
@@ -37,7 +37,7 @@ public class QuadTree implements Iterable<Point> {
      * Should construct the tree in a balanced fashion. ie,
      * its maximum depth is minimised and the number of subdivisions 
      * at each level is maximised.
-     * @param points the collection of points to add
+     * @param points the arraylist of points to add
      */
     public QuadTree(ArrayList<Point> points) {
         if(points == null || points.isEmpty())
@@ -155,9 +155,9 @@ public class QuadTree implements Iterable<Point> {
         return p.coordinates[0] == h.x && p.coordinates[1] == h.y;
     }
     /**
-     * 
-     * @param p
-     * @return
+     * Test if the quadtree contains a given point
+     * @param p the point to search for 
+     * @return true if the quadtree contains the point
      */
     public boolean contains(Point p) {
         return contains(root, p);
@@ -176,19 +176,22 @@ public class QuadTree implements Iterable<Point> {
         return false;
     }
     /**
-     * Adds all neighours of p from the tree to the point
+     * Returns all neighours of p from the tree to the point
      * @param epsilon
      * @param p
      */
-    public void queryCircle(int epsilon, Point p) {
-        query2D(root, p, epsilon);
+    public HashSet<Point> queryCircle(int epsilon, Point p) {
+        HashSet<Point> neighbours = new HashSet<Point>();
+        query2D(root, p, epsilon,neighbours);
+        return neighbours;
     }
     /**
      * @param h
      * @param p
      * @param r
+     * @param neighbours
      */
-    private void query2D(QuadTreeNode h, Point p, int r) {
+    private void query2D(QuadTreeNode h, Point p, int r, HashSet<Point> neighbours) {
         if(h==null) return;
         int px = p.coordinates[0];
         int py = p.coordinates[1];
@@ -197,12 +200,13 @@ public class QuadTree implements Iterable<Point> {
         int ymin = py - r;
         int ymax = py + r;
         if(p.distance(h.value.get(0)) <= r) {
-            p.addNeighbours(h.value);
+            neighbours.addAll(h.value);
+          //  p.addNeighbours(h.value);
         }
-        if ( (xmin < h.x) &&  (ymin < h.y)) query2D(h.SW, p, r);
-        if ( (xmin < h.x) && !(ymax < h.y)) query2D(h.NW, p, r);
-        if (!(xmax < h.x) &&  (ymin < h.y)) query2D(h.SE, p, r);
-        if (!(xmax < h.x) && !(ymax < h.y)) query2D(h.NE, p, r);
+        if ( (xmin < h.x) &&  (ymin < h.y)) query2D(h.SW, p, r, neighbours);
+        if ( (xmin < h.x) && !(ymax < h.y)) query2D(h.NW, p, r, neighbours);
+        if (!(xmax < h.x) &&  (ymin < h.y)) query2D(h.SE, p, r, neighbours);
+        if (!(xmax < h.x) && !(ymax < h.y)) query2D(h.NE, p, r, neighbours);
     }
   
     /**
@@ -228,7 +232,7 @@ public class QuadTree implements Iterable<Point> {
      * @param args
      */
     public static void main(String[] args) {
-        int epsilon = 2000;
+        int epsilon = 5000;
         int runs = 10;
         System.out.println("Epsilon: "+epsilon);
         System.out.println("Runs: "+runs);
@@ -308,7 +312,7 @@ public class QuadTree implements Iterable<Point> {
     public static double timeNeighbouring(QuadTree tree,int epsilon) {
         double start = System.nanoTime();
         for (Point p : tree) {
-            tree.queryCircle(epsilon,p);
+            p.addNeighbours(tree.queryCircle(epsilon,p));
             p.clearNeighbours();
         }
         return (System.nanoTime()-start) /1000000000.0;
@@ -319,6 +323,10 @@ public class QuadTree implements Iterable<Point> {
     public int size() {
         return size;
     }
+    /**
+     * The average depth of the tree
+     * @return
+     */
     public double avgDepth() {
         ArrayList<Integer> depths = new ArrayList<Integer>();
         avgDepth(root,depths, 0);
@@ -341,6 +349,10 @@ public class QuadTree implements Iterable<Point> {
             }
         }
     }
+    /**
+     * 
+     * @return the maximum depth of the tree
+     */
     public int maxDepth()  {
         return maxDepth(root,0);
     }
@@ -353,6 +365,10 @@ public class QuadTree implements Iterable<Point> {
                     Math.max(maxDepth(h.SE, depth+1),maxDepth(h.SW, depth+1))
                    );
     }
+    /**
+     * Returns all points in the tree
+     * @return the points of the tree
+     */
     public ArrayList<Point> allPoints() {
         ArrayList<Point> points = new ArrayList<Point>(size);
         allPoints_(root,points);
@@ -376,7 +392,6 @@ public class QuadTree implements Iterable<Point> {
     @Override
     public Iterator<Point> iterator() {
         return allPoints().iterator();
-        //return new QuadTreeIterator();
     }
     /**
      * Adapted from http://www.merl.com/reports/docs/TR2002-41.pdf
