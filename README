@@ -1,1 +1,3 @@
-People read these?
+An implementation of DBSCAN with a modification that allows for iterative calculation.
+Comes with a GUI for visualisation and configuration. 
+All input files should be line separated points, where each point is a whitespace separated integer. 
