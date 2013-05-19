@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.InputMismatchException;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Random;
 import java.util.Scanner;
 import javax.swing.JFrame;
@@ -446,9 +448,9 @@ public class Visualisation extends JPanel {
          * @param cluster
          */
         private void expandCluster(HashSet<Point> cluster, HashSet<Point> neighbourPts) {
-            ArrayList<Point> neighbourList = new ArrayList<Point>(neighbourPts);
-            for (int j = 0; j < neighbourList.size();j++) {
-                Point p = neighbourList.get(j);
+            Queue<Point> neighbourList = new LinkedList<Point>(neighbourPts);
+            while(neighbourList.isEmpty()) {
+                Point p = neighbourList.remove();
                 if(!p.visited) {
                     p.visited = true;
                     pointsClustered++;
