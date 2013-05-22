@@ -14,6 +14,7 @@ public class Point {
     private final HashSet<Point> neighbours = new HashSet<Point>();
     int[] coordinates;
     boolean visited = false;
+    public boolean inCluster = false;
     /**
      * @param ps
      */

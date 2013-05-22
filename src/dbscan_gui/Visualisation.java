@@ -271,6 +271,7 @@ public class Visualisation extends JPanel {
     private void resetClusters() {
         for (Point p : points) {
             p.visited = false;
+            p.inCluster = false;
         }
         clusters.clear();
         noise.clear();
@@ -449,7 +450,7 @@ public class Visualisation extends JPanel {
          */
         private void expandCluster(HashSet<Point> cluster, HashSet<Point> neighbourPts) {
             Queue<Point> neighbourList = new LinkedList<Point>(neighbourPts);
-            while(neighbourList.isEmpty()) {
+            while(!neighbourList.isEmpty()) {
                 Point p = neighbourList.remove();
                 if(!p.visited) {
                     p.visited = true;
@@ -459,15 +460,12 @@ public class Visualisation extends JPanel {
                         neighbourList.addAll(neighbourPts_);
                     }
                 }
-                boolean iInCluster = false;
-                for (HashSet<Point> x : clusters) {
-                    if(x.contains(p)) {
-                        iInCluster = true;
-                        break;
-                    }
-                }
-                if(!iInCluster)
+                
+                if(!p.inCluster) {
                     cluster.add(p);
+                    p.inCluster = true;
+                }
+               
             }
         }
         /**
@@ -490,6 +488,7 @@ public class Visualisation extends JPanel {
                 } else {
                     HashSet<Point> c = new HashSet<Point>(minpts);
                     clusters.add(c);
+                    i.inCluster = true;
                     expandCluster(c, i.getNeighbours());
                 }
             }
