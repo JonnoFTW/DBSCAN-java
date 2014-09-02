@@ -637,7 +637,7 @@ public class Visualisation extends JPanel {
             }
             for (HashSet<Point> cluster : clusters) {
                 Color c = generateRandomColor(null);
-                //g.setColor(c);
+                g.setColor(c);
                 for (Point point : cluster) {
                     drawCircle(g, point.coordinates[0]*width/maxX , point.coordinates[1]*height/maxY , 2,true,c);
                 }
