@@ -1,3 +1,5 @@
 bin/*
-bin/dbscan_gui
+bin/dbscan_gui/*.class
+.settings/*
+.codepro/*
 *.class
